@@ -77,7 +77,7 @@ services:
 
   hysteria2:
     build:
-      context: ./hysteria2
+      context: ./hysteria
       dockerfile: Dockerfile
     image: hysteria2
     container_name: hysteria2
