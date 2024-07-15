@@ -2,7 +2,7 @@ FROM alpine:3.6
 
 WORKDIR /root
 
-COPY shadowsocksr-3.2.2 /root
+COPY shadowsocksr-3.2.2 /root/shadowsocksr-3.2.2
 COPY run.sh /root
 COPY health_check.sh /root
 
