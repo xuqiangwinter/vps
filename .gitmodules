@@ -1,6 +1,6 @@
 [submodule "acme.sh"]
 	path = acme.sh
 	url = https://github.com/acmesh-official/acme.sh.git
-[submodule "hysteria2"]
-	path = hysteria2
+[submodule "hysteria"]
+	path = hysteria
 	url = https://github.com/apernet/hysteria.git
