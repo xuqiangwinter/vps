@@ -1,0 +1,143 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  registry:
+    image: registry:2
+    container_name: registry
+    network_mode: host
+    restart: always
+    environment:
+      REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+      REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR: inmemory
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://localhost:5000/v2/_catalog || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    network_mode: host
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/docker/nginx/conf.d:/etc/nginx/conf.d
+      - /home/docker/nginx/html:/etc/nginx/html
+      - /home/docker/acme.sh:/acme.sh
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    logging: *default-logging
+    depends_on:
+      acme-sh:
+        condition: service_healthy
+    #   hysteria2:
+    #     condition: service_healthy
+
+  acme-sh:
+    build:
+      context: ./acme.sh
+      dockerfile: Dockerfile
+    image: acme.sh
+    container_name: acme.sh
+    network_mode: host
+    restart: always
+    command: daemon
+    environment:
+      - CF_Token="cloudflare-api"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/docker/acme.sh:/acme.sh
+    healthcheck:
+      test: ["CMD-SHELL", "acme.sh --version || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 3s
+    logging: *default-logging
+
+  hysteria2:
+    build:
+      context: ./hysteria2
+      dockerfile: Dockerfile
+    image: hysteria2
+    container_name: hysteria2
+    network_mode: host
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/docker/hysteria2/config:/etc/hysteria
+      - /home/docker/hysteria2/acme:/acme
+    stdin_open: true
+    tty: true
+    command: ["server", "-c", "/etc/hysteria/config.yaml"]
+    logging: *default-logging
+
+  shadowsocksr:
+    build:
+      context: ./shadowsocksr
+      dockerfile: Dockerfile
+    image: shadowsocksr
+    container_name: shadowsocksr
+    network_mode: host
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/docker/shadowsocksr:/etc/shadowsocksr
+    stdin_open: true
+    tty: true
+    logging: *default-logging
+
+  frps:
+    build:
+      context: ./frps
+      dockerfile: Dockerfile
+    image: frps:0.56.0
+    container_name: frps
+    network_mode: host
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /home/docker/frps:/frps/config
+    stdin_open: true
+    tty: true
+    logging: *default-logging
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: always
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    logging: *default-logging
+    depends_on:
+      - registry
+      - nginx
+      - acme-sh
+      - hysteria2
+      - shadowsocksr
+      - frps
