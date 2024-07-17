@@ -8,11 +8,12 @@ services:
   registry:
     image: registry:2
     container_name: registry
-    network_mode: host
     restart: always
     environment:
       REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
       REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR: inmemory
+    ports:
+      - 5000:5000
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
@@ -91,6 +92,12 @@ services:
     stdin_open: true
     tty: true
     command: ["server", "-c", "/etc/hysteria/config.yaml"]
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "hysteria"]
+      interval: 1m
+      timeout: 3s
+      retries: 5
+      start_period: 3s
     logging: *default-logging
 
   shadowsocksr:
